@@ -4,7 +4,12 @@ GO
 CREATE OR ALTER PROC PARTIDA_COM_MAIS_GOLS
 AS
 BEGIN
-    SELECT TOP(1) b.Apelido, c.Apelido, a.GolsMandante + a.GolsVisitante AS TotalGols
+    SELECT TOP(1) 
+        b.Apelido AS Mandante, 
+        c.Apelido AS Visitante, 
+        a.GolsMandante,
+        a.GolsVisitante,
+        a.GolsMandante + a.GolsVisitante AS TotalGols
     FROM Partida a
     JOIN Clube b
     ON a.ClubeMandante_id = b.Clube_id

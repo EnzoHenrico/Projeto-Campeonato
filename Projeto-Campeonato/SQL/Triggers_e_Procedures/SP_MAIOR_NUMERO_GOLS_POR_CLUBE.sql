@@ -13,7 +13,7 @@ BEGIN
     ELSE (
         SELECT MAX(b.GolsMandante) FROM partida b WHERE a.ClubeVisitante_id = b.ClubeMandante_id GROUP BY b.ClubeMandante_id
     )
-    END AS TotalGols
+    END AS GolsFeitos
     FROM partida a
     GROUP BY a.ClubeVisitante_id
 END
