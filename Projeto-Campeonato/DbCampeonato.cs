@@ -12,16 +12,43 @@ namespace Projeto_Campeonato
 {
     internal class DbCampeonato
     {
-        public SqlConnection Conexao;
+        public SqlConnection Conexao = new (
+            "Data Source=127.0.0.1; " +
+            "Initial Catalog=DB_Futebol; " +
+            "User Id=sa; " +
+            "Password=SqlServer2019!; " +
+            "TrustServerCertificate=True");
 
-        public DbCampeonato()
+        public bool ExistemPartidasRegistradas()
         {
-            Conexao = new SqlConnection(
-                "Data Source=127.0.0.1; " +
-                "Initial Catalog=DB_Futebol; " +
-                "User Id=sa; " +
-                "Password=SqlServer2019!; " +
-                "TrustServerCertificate=True");
+            try
+            {
+                Conexao.Open();
+                SqlCommand cmd = new()
+                {
+                    CommandText = "SELECT COUNT(1) FROM Partida;",
+                    Connection = Conexao,
+                };
+                cmd.ExecuteScalar();
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        return reader.GetInt32(0) > 0;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                Conexao.Close();
+            }
+
+            return false;
         }
 
         public void ExibirClassificacaoFinal()
@@ -34,14 +61,14 @@ namespace Projeto_Campeonato
                                   "FROM Classificacao a " +
                                   "JOIN Clube b " +
                                   "ON a.Clube_id = b.Clube_id " +
-                                  "ORDER BY a.Pontuacao DESC;";
+                                  "ORDER BY a.Pontuacao DESC, a.SaldoGols DESC;";
                 cmd.Connection = Conexao;
                 cmd.ExecuteNonQuery();
 
                 using (var reader = cmd.ExecuteReader())
                 {
                     Console.Clear();
-                    Console.WriteLine("        ┌[   * Tabela Final do Campeonato *   ]┐        ");
+                    Console.WriteLine("        ┌[   * Tabela Final do GerenciadorCampeonato *   ]┐        ");
                     Console.WriteLine("┌──────────────────────┬──────┬─────┬─────┬─────┬──────┐");
                     Console.WriteLine("│ Time                 │ Ptos │  V  │  D  │  E  │  SG  │");
                     Console.WriteLine("├──────────────────────┼──────┼─────┼─────┼─────┼──────┤");
@@ -271,6 +298,179 @@ namespace Projeto_Campeonato
                 Conexao.Close();
                 Console.WriteLine("\n─[ Pessione qualquer tecla para voltar ]─\n");
                 Console.ReadKey();
+            }
+        }
+
+        public void RegistrarClubes(List<Clube> clubes)
+        {
+            try
+            {
+                Conexao.Open();
+                SqlCommand cmd = new()
+                {
+                    CommandType = CommandType.StoredProcedure,
+                    Connection = Conexao
+                };
+
+                foreach (var clube in clubes)
+                {
+                    // Procedure Adicionar Clube
+                    cmd.CommandText = "ADICIONAR_CLUBE";
+                    
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.Add(new SqlParameter("@Nome", clube.Nome));
+                    cmd.Parameters.Add(new SqlParameter("@Apelido", clube.Apelido));
+                    cmd.Parameters.Add(new SqlParameter("@DataCriacao", clube.DataCriacao));
+                    
+                    cmd.ExecuteNonQuery();
+                }
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                Conexao.Close();
+            }
+        }
+
+        public void RegistrarPartidas(List<Partida> partidas)
+        {
+            try
+            {
+                Conexao.Open();
+                SqlCommand cmd = new()
+                {
+                    Connection = Conexao
+                };
+
+                foreach (var partida in partidas)
+
+                {
+                    int mandanteId = 0, visitanteId = 0;
+                    cmd.CommandType = CommandType.Text;
+                    cmd.CommandText = "SELECT Clube_id FROM Clube WHERE Nome = @Nome";
+
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.Add(new SqlParameter("@Nome", partida.Mandante.Nome));
+                    cmd.ExecuteScalar();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            mandanteId = reader.GetInt32(0);
+                        }
+                    }
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.Add(new SqlParameter("@Nome", partida.Visitante.Nome));
+                    cmd.ExecuteScalar();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            visitanteId = reader.GetInt32(0);
+                        }
+                    }
+
+                    // Procedure Adicionar Partida
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "REGISTRAR_PARTIDA";
+                    
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.Add(new SqlParameter("@Mandante_id", mandanteId));
+                    cmd.Parameters.Add(new SqlParameter("@Visitante_id", visitanteId));
+                    cmd.Parameters.Add(new SqlParameter("@GolsMandante", partida.GolsMandante));
+                    cmd.Parameters.Add(new SqlParameter("@GolsVisitante", partida.GolsVisitante));
+                    
+                    cmd.ExecuteNonQuery();
+                }
+
+                
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                Conexao.Close();
+            }
+        }
+
+        public void LimparRegistrosClassificacao()
+        {
+            try
+            {
+                Conexao.Open();
+                SqlCommand cmd = new()
+                {
+                    Connection = Conexao
+                };
+
+                cmd.CommandText = "DELETE FROM Classificacao";
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                Conexao.Close();
+            }
+        }
+
+        public void LimparRegistrosPartidas()
+        {
+            try
+            {
+                Conexao.Open();
+                SqlCommand cmd = new()
+                {
+                    Connection = Conexao
+                };
+
+                cmd.CommandText = "DELETE FROM Partida";
+                cmd.ExecuteNonQuery();
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                Conexao.Close();
+            }
+        }
+
+        public void LimparRegistrosClubes()
+        {
+            try
+            {
+                Conexao.Open();
+                SqlCommand cmd = new()
+                {
+                    Connection = Conexao
+                };
+
+                // Deleta todos clubes
+                cmd.CommandText = "DELETE FROM Clube;";
+                cmd.ExecuteNonQuery();
+
+                // Reinicia a contagem dos indexes para 1
+                cmd.CommandText = "DBCC CHECKIDENT('Clube', RESEED, 0)";
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                Conexao.Close();
             }
         }
     }
