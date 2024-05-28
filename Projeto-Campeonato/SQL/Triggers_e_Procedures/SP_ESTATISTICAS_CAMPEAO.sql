@@ -18,5 +18,5 @@ BEGIN
     FROM Classificacao a 
     JOIN Clube b 
     ON a.Clube_id = b.Clube_id
-    ORDER BY a.Pontuacao DESC;
+    ORDER BY a.Pontuacao DESC, a.SaldoGols DESC;
 END
